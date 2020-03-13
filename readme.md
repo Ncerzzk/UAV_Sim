@@ -29,3 +29,7 @@ for i in range(0,50000):
 plt.plot(attituide)
 plt.show()
 ```
+
+![此处输入图片的描述][1]
+
+[1]: https://raw.githubusercontent.com/Ncerzzk/UAV_SIM/master/pid_control.png
