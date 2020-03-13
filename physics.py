@@ -8,7 +8,7 @@ class Vector3(object):
         if isinstance(lst,Vector3):
             self.np_data=lst.np_data
         else:
-            self.np_data=np.array(lst)
+            self.np_data=np.array(lst,dtype=np.float)
         self.dic = {"x": 0, "y": 1, "z": 2}
 
     def copy(self):
@@ -53,9 +53,14 @@ class Vector3(object):
             result=operand*self.np_data
         elif operate=="r+":
             result=operand+self.np_data
+        elif operate=="+=":
+            self.np_data+=operand
+            return self
         temp.__init__(result)
         return temp
 
+    def __iadd__(self, other):
+        return self.__operate(other,"+=")
 
     def __add__(self, other):
         return self.__operate(other,"+")
@@ -154,6 +159,7 @@ class SimObject:
         self.w=Vector3([0,0,0]) # 角速度
 
         self.forces=[]
+        self.torques=Vector3([0,0,0])
         self.step_time=step_time
 
         self.centroid_position=self.origin.copy()
@@ -168,14 +174,17 @@ class SimObject:
             sum_force+=i
             i_r=i.rotate(self.attitude)
             torques+=i_r*i.origin
-
+        self.torques=Vector3(torques)
         self.origin+=self.v*self.step_time
         self.ac=sum_force.fxyz*(1/self.mass)
         self.v+=self.ac*self.step_time
 
         self.attitude+=self.w*self.step_time
         self.w+=self.beta*self.step_time
-        self.beta=Vector3(torques)*(1/self.J)  # np.array 不能与 Vector3相乘
+        self.beta=Vector3(torques)*(1/self.J)
+        # np.array 不能与 Vector3相乘
+        # 因为会先调用np.array的左乘函数，将np,array分成单个元素，然后再调用 单个元素* Vector3
+        # 而单个元素乘以Vector3会调用Vector3的右乘函数，返回一个Vector3，所以最后np.array * Vector3，会返回 n个 Vector3，与要求不符
 
 
 
@@ -210,7 +219,7 @@ class Force:
         self.coordinate_system=coordinate_system
 
     def rotate(self,target_coordinate_system):
-        result_force=Force([0,0,0],self.origin,self.coordinate_system)
+        result_force=Force([0,0,0],self.origin,target_coordinate_system)
         matrix=self.coordinate_system.get_rotate_matrix(target_coordinate_system)
         new_fxyz=Vector3(matrix@self.fxyz.np_data)
         result_force.fxyz=new_fxyz
@@ -258,9 +267,30 @@ class Sim_Env:
             i.sim_step()
 
 
+class PID_Control:
+    def __init__(self,sim_step_tim,control_time,KP,KD,KI):
+        self.cnt_max=control_time/sim_step_tim
+        self.cnt=0
+        self.kp=KP
+        self.kd=KD
+        self.ki=KI
 
+        self.last_error=0
+        self.i=0
 
+        self.control_time=control_time
+        self.last_result=0
 
+    def control(self,target,now_value):
+        self.cnt+=1
+        if self.cnt<self.cnt_max:
+            return self.last_result
+        else:
+            self.cnt=0
+            error=target-now_value
+            result=self.kp*error+self.kd*(error-self.last_error)+self.i*self.ki
 
-
-
+            self.last_error=error
+            self.i+=error*self.control_time
+            self.last_result=result
+            return result
