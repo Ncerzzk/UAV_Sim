@@ -100,10 +100,10 @@ class RollController(Controller):
 class TestSimEnv(unittest.TestCase):
     def test(self):
         world_cs=CoordinateSystem([0,0,0])
-        env=Sim_Env(1e-5)
-        sim_obj=SimObject([0,0,0],[0,0,0],0.1,[0.125/1000,0.125/1000,0.125/1000])
-        left=Force([10,0,0],[0,-0.1,0],sim_obj.attitude)
-        right = Force([-10, 0, 0], [0, 0.1, 0], sim_obj.attitude)
+        env=SimEnv(1e-5)
+        sim_obj=SimObject([0,0,0],[math.pi/4,0,0],0.1,[0.125/1000,0.125/1000,0.125/1000])
+        left=Force([0,0,10],[0,-0.1,0],sim_obj.attitude)
+        right = Force([0, 0, 10], [0, 0.1, 0], sim_obj.attitude)
         gravity=Gravity(world_cs)
         #gravity=Force([0,0,-9.8*sim_obj.mass],[0,0,0],world_cs)
 
@@ -125,7 +125,7 @@ class TestSimEnv(unittest.TestCase):
         attituide=[]
         x=[]
         env.sim_call_back=lambda x:attituide.append(sim_obj.attitude[0])
-        env.run(30000)
+        env.run(60000)
 
         plt.plot(attituide)
         #plt.plot(result)

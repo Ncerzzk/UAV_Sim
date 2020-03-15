@@ -26,7 +26,7 @@ def vector_to_vector3(vector):
 
 
 world_cs = CoordinateSystem([0, 0, 0])
-env = Sim_Env(1e-5)
+env = SimEnv(1e-5)
 sim_obj = SimObject([0, 0, 0], [0, 0, 0], 0.1, [0.125 / 1000, 0.125 / 1000, 0.125 / 1000])
 left = Force([5, 0, 0], [0, -0.1, 0.1], sim_obj.attitude)
 right = Force([5, 0, 0], [0, 0.1, 0.1], sim_obj.attitude)
