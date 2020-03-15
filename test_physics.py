@@ -70,44 +70,63 @@ class TestForce(unittest.TestCase):
         print(result.fxyz.np_data)
         self.assertTrue(np.all(result.fxyz==np.array([0,-1,0])))
 
-def roll_control(fleft,fright,sim_obj,pid_controler):
-    result=pid_controler.control(0,sim_obj.attitude.roll)
-    fleft.fxyz.z=10-result
-    fright.fxyz.z=10+result
+class TestSimTimer(unittest.TestCase):
+    def test(self):
+        timer=SimTimer(1e-5)
+        timer.add_event(2e-3,None)
+        self.assertEqual(timer.events_arr[0][0],int(2e-3/1e-5))
+
+        timer.add_event(1e-3,None)
+        self.assertEqual(timer.events_arr[0][0], int(1e-3 / 1e-5))
+        self.assertEqual(timer.events_arr[1][0], int(2e-3 / 1e-5))
 
 
+
+class RollController(Controller):
+    def __init__(self,control_time,fleft,fright,attitude):
+        super().__init__(control_time)
+        self.pid_controller=PID_Control(control_time,3,25,0)
+        self.left=fleft
+        self.right=fright
+        self.attitude=attitude
+
+    def run(self):
+        if super().run():
+            result=self.pid_controller.control(0,self.attitude.roll)
+            self.left.fxyz.z = 1 - result
+            self.right.fxyz.z = 1 + result
 
 
 class TestSimEnv(unittest.TestCase):
     def test(self):
         world_cs=CoordinateSystem([0,0,0])
         env=Sim_Env(1e-5)
-        sim_obj=SimObject([0,0,0],[math.pi/4,0,0],0.1,[0.125/1000,0.125/1000,0.125/1000],1e-5)
+        sim_obj=SimObject([0,0,0],[math.pi/4,0,0],0.1,[0.125/1000,0.125/1000,0.125/1000])
         left=Force([0,0,10],[0,-0.1,0],sim_obj.attitude)
         right = Force([0, 0, 10], [0, 0.1, 0], sim_obj.attitude)
-        #gravity=Force([0,0,-9.8*sim_obj.mass],[1,0,0],sim_obj.attitude)
-        #sim_obj.add_force(gravity)
+        gravity=Gravity(world_cs)
+        #gravity=Force([0,0,-9.8*sim_obj.mass],[0,0,0],world_cs)
+
+        boom=Force([0, 0, 20], [0, 0.2, 0], sim_obj.attitude)
+
+        env.add_pulse_force(boom,sim_obj,0.2,0.0005)
+
+        sim_obj.add_force(gravity)
         sim_obj.add_force(left)
         sim_obj.add_force(right)
         env.add_sim_object(sim_obj)
 
-        pid_controler=PID_Control(1e-5,5e-3,1,5,0)
+        #pid_controler=PID_Control(1e-5,5e-3,3,25,0)
+        roll_control=RollController(5e-3,left,right,sim_obj.attitude)
+        env.add_controler(roll_control)
 
         result=[]
         torques=[]
         attituide=[]
         x=[]
-        for i in range(0,50000):
-            env.sim_step()
-            result.append(sim_obj.w.np_data[0])
-            attituide.append(sim_obj.attitude.np_data[0])
-            torques.append(sim_obj.torques.np_data[0])
-            #x.append(i)
-            roll_control(left,right,sim_obj,pid_controler)
+        env.sim_call_back=lambda x:attituide.append(sim_obj.attitude.np_data[0])
+        env.run(50000)
 
-        print(sim_obj.v.np_data)
-        print(sim_obj.origin.np_data)
-        print(sim_obj.attitude.np_data)
         plt.plot(attituide)
         #plt.plot(result)
         plt.show()
