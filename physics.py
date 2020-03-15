@@ -1,112 +1,71 @@
 import numpy as np
 from math import cos, sin
 
+class Vector3(np.ndarray):
 
-class Vector3(object):
+    def __new__(cls, *args, **kwargs):
+        buffer=np.array(args[0],dtype=np.float)
+        return super().__new__(cls,(3,),buffer=buffer)
 
-    def __init__(self, lst):
-        if isinstance(lst, Vector3):
-            self.np_data = lst.np_data
-        else:
-            self.np_data = np.array(lst, dtype=np.float)
-        self.dic = {"x": 0, "y": 1, "z": 2}
+    def __eq__(self, other):
+        return super(object).__eq__(other)
 
-    def copy(self):
-        temp = self.__new__(self.__class__)
-        temp.__init__(self.np_data)
-        return temp
+    @property
+    def x(self):
+        return self[0]
 
-    def __getattr__(self, item):
-        if item in self.dic:
-            return self.np_data[self.dic[item]]
-        else:
-            raise NameError
+    @x.setter
+    def x(self,value):
+        self[0]=value
 
-    def __setattr__(self, key, value):
-        if key == "np_data" or key == "dic":
-            super().__setattr__(key, value)
-        else:
-            self.np_data[self.dic[key]] = value
+    @property
+    def y(self):
+        return self[1]
 
-    def __operate(self, other, operate):
-        temp = self.__new__(self.__class__)
-        if isinstance(other, Vector3):
-            operand = other.np_data
-        else:
-            operand = other
-        if operate == "+":
-            result = self.np_data + operand
-        elif operate == "-":
-            result = self.np_data - operand
-        elif operate == "*":
-            result = self.np_data * operand
-        elif operate == "/":
-            result = self.np_data / operand
-        elif operate == "@":
-            result = self.np_data @ operand
-        elif operate == "neg":
-            result = -self.np_data
-        elif operate == "r/":
-            result = operand / self.np_data
-        elif operate == "r*":
-            result = operand * self.np_data
-        elif operate == "r+":
-            result = operand + self.np_data
-        elif operate == "+=":
-            self.np_data += operand
-            return self
-        temp.__init__(result)
-        return temp
+    @y.setter
+    def y(self,value):
+        self[1]=value
 
-    def __iadd__(self, other):
-        return self.__operate(other, "+=")
+    @property
+    def z(self):
+        return self[2]
 
-    def __add__(self, other):
-        return self.__operate(other, "+")
-
-    def __sub__(self, other):
-        return self.__operate(other, "-")
-
-    def __mul__(self, other):
-        return self.__operate(other, "*")
-
-    def __truediv__(self, other):
-        return self.__operate(other, "/")
-
-    def __matmul__(self, other):
-        return self.__operate(other, "@")
-
-    def __neg__(self):
-        return self.__operate(self, "neg")
-
-    def __radd__(self, other):
-        return self.__operate(other, "r+")
-
-    def __rtruediv__(self, other):
-        return self.__operate(other, "r/")
-
-    def __rmul__(self, other):
-        return self.__operate(other, "r*")
-
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            return self.__getattr__(item)
-        if isinstance(item, int):
-            return self.np_data[item]
-        else:
-            raise TypeError
+    @z.setter
+    def z(self,value):
+        self[2]=value
 
 
 class Attitude(Vector3):
-    def __init__(self, rpy):
-        super().__init__(rpy)
-        self.dic = {"roll": 0, "pitch": 1, "yaw": 2}
+
+    @property
+    def roll(self):
+        return self[0]
+
+    @roll.setter
+    def roll(self,value):
+        self[0]=value
+
+    @property
+    def pitch(self):
+        return self[1]
+
+    @pitch.setter
+    def pitch(self,value):
+        self[1]=value
+
+    @property
+    def yaw(self):
+        return self[2]
+
+    @yaw.setter
+    def yaw(self,value):
+        self[2]=value
 
 
 class CoordinateSystem(Attitude):
 
     def Rx(self):
-        theta = self.roll
+        theta = self[0]
         cos_ = cos(theta)
         sin_ = sin(theta)
         result = np.array([
@@ -117,7 +76,7 @@ class CoordinateSystem(Attitude):
         return result
 
     def Ry(self):
-        theta = self.pitch
+        theta = self[1]
         cos_ = cos(theta)
         sin_ = sin(theta)
         result = np.array([
@@ -128,7 +87,7 @@ class CoordinateSystem(Attitude):
         return result
 
     def Rz(self):
-        theta = self.yaw
+        theta = self[2]
         cos_ = cos(theta)
         sin_ = sin(theta)
         result = np.array([
@@ -138,9 +97,31 @@ class CoordinateSystem(Attitude):
         ])
         return result
 
+    def Rzyx(self):
+        cos_pitch = cos(self.pitch)
+        cos_yaw = cos(self.yaw)
+        cos_roll = cos(self.roll)
+        sin_pitch=sin(self.pitch)
+        sin_yaw=sin(self.yaw)
+        sin_roll=sin(self.roll)
+        matrix = np.array([
+            [cos_pitch * cos_yaw, cos_roll * sin_yaw + cos_yaw * sin_pitch * sin_roll,
+             cos_roll * cos_yaw * sin_pitch - sin_roll * sin_yaw],
+            [-cos_pitch * sin_yaw, cos_roll * cos_yaw - sin_pitch * sin_roll * sin_yaw,
+             - cos_yaw * sin_roll - cos_roll * sin_pitch * sin_yaw],
+            [-sin_pitch, cos_pitch * sin_roll, cos_pitch * cos_roll]
+        ])
+        return matrix
+
     def get_rotate_matrix(self, other):
+        if other==self:
+            temp=np.array([[1,0,0],
+                          [0,1,0],
+                          [0,0,1]])
+            return temp
         sub = other - self
-        result = sub.Rz() @ sub.Ry() @ sub.Rx()
+        #result = sub.Rz() @ sub.Ry() @ sub.Rx()
+        result=sub.Rzyx()
         return result
 
 
@@ -191,28 +172,6 @@ class SimObject:
         # 而单个元素乘以Vector3会调用Vector3的右乘函数，返回一个Vector3，所以最后np.array * Vector3，会返回 n个 Vector3，与要求不符
 
 
-class Drone:
-    def __init__(self):
-        self.mass_arr = []
-        self.mass_sum = 0
-        self.centroid = Position()
-
-    def add_part(self, mass_part, mass_position=None):
-        if mass_position:
-            mass_part.position = mass_position
-        self.mass_arr.append(mass_part)
-        self.mass_sum += mass_part.mass
-        self.centroid = self.cal_centroid()
-
-    def cal_centroid(self):
-        centroid_position = Position()
-        for i in self.mass_arr:
-            centroid_position.x += i.position.x * i.mass / self.mass_sum
-            centroid_position.y += i.position.y * i.mass / self.mass_sum
-            centroid_position.z += i.position.z * i.mass / self.mass_sum
-        return centroid_position
-
-
 class Force:
     def __init__(self, vector_value, origin, coordinate_system):
         self.fxyz = Vector3(vector_value)
@@ -224,15 +183,19 @@ class Force:
             return self
         result_force = Force([0, 0, 0], self.origin, target_coordinate_system)
         matrix = self.coordinate_system.get_rotate_matrix(target_coordinate_system)
-        new_fxyz = Vector3(matrix @ self.fxyz.np_data)
+        new_fxyz = Vector3(matrix @ self.fxyz)
         result_force.fxyz = new_fxyz
         return result_force
 
     def __add__(self, other):
+
         result_force = Force([0, 0, 0], self.origin, self.coordinate_system)
-        matrix = other.coordinate_system.get_rotate_matrix(self.coordinate_system)
-        other_new_fxyz = Vector3(matrix @ other.fxyz.np_data)
-        result_force.fxyz = self.fxyz + other_new_fxyz
+        if other.coordinate_system==other.coordinate_system:
+            result_force.fxyz=self.fxyz+other.fxyz
+        else:
+            matrix = other.coordinate_system.get_rotate_matrix(self.coordinate_system)
+            other_new_fxyz = Vector3(matrix @ other.fxyz)
+            result_force.fxyz = self.fxyz + other_new_fxyz
         return result_force
 
     def __neg__(self):
@@ -250,7 +213,7 @@ class Force:
                 [f[2], 0, f[0]],
                 [f[1], f[0], 0]
             ])
-            result = matrix @ sub.np_data.T
+            result = matrix @ sub.T
             return result
         else:
             raise TypeError

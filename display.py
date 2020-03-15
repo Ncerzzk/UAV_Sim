@@ -27,9 +27,9 @@ def vector_to_vector3(vector):
 
 world_cs = CoordinateSystem([0, 0, 0])
 env = Sim_Env(1e-5)
-sim_obj = SimObject([0, 0, 0], [math.pi / 4, 0, 0], 0.1, [0.125 / 1000, 0.125 / 1000, 0.125 / 1000])
-left = Force([0, 0, 10], [0, -0.1, 0], sim_obj.attitude)
-right = Force([0, 0, 10], [0, 0.1, 0], sim_obj.attitude)
+sim_obj = SimObject([0, 0, 0], [0, 0, 0], 0.1, [0.125 / 1000, 0.125 / 1000, 0.125 / 1000])
+left = Force([5, 0, 0], [0, -0.1, 0.1], sim_obj.attitude)
+right = Force([5, 0, 0], [0, 0.1, 0.1], sim_obj.attitude)
 gravity = Force([0, 0, -9.8 * sim_obj.mass], [0, 0, 0], world_cs)
 
 boom = Force([0, 0, 20], [0, 0.2, 0], sim_obj.attitude)
@@ -42,7 +42,7 @@ env.add_pulse_force(boom,sim_obj,0.2,0.0005)
 
 # pid_controler=PID_Control(1e-5,5e-3,3,25,0)
 roll_control = RollController(5e-3, left, right, sim_obj.attitude)
-env.add_controler(roll_control)
+#env.add_controler(roll_control)
 
 box=vp.box(pos=vp.vector(0,0,0),length=20,height=5,width=5)
 
@@ -51,17 +51,19 @@ vector3_axis=vector_to_vector3(axis)
 
 def get_new_axis(sim_obj,world_cs):
     matrix=sim_obj.attitude.get_rotate_matrix(world_cs)
-    new_axis_vector3=Vector3(matrix@vector3_axis.np_data)
+    new_axis_vector3=Vector3(matrix@vector3_axis)
     return vector3_to_vector(new_axis_vector3)
 
 def render(env):
     box.pos=vector3_to_vector(sim_obj.origin)
     box.axis=get_new_axis(sim_obj,world_cs)
+    box.rotate(sim_obj.attitude.pitch)
+    vp.rate(24)
 
 env.sim_call_back=render
-#env.run(30000)
+env.run(30000)
 
-p=profile.Profile()
-p.runcall(env.run,1000)
-p.print_stats()
+#p=profile.Profile()
+#p.runcall(env.run,1000)
+#p.print_stats()
 print("OK")
