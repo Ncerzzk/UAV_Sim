@@ -1,5 +1,6 @@
 from physics import *
 import vpython as vp
+import math
 
 
 def vector3_to_vector(vector3):
@@ -17,13 +18,38 @@ def get_new_axis(src, target, keep_axis_vector3):
     return vector3_to_vector(new_axis_vector3)
 
 
+class ChinookController(Controller):
+    def __init__(self,chinook_env):
+        super().__init__(5e-3)
+        self.obj=chinook_env.chinook_uav
+        self.env=chinook_env
+        self.pitch_pid_controller=PID_Control(5e-3,0.5,5,0)
+        for i in chinook_env.parameters:
+            self.__setattr__(i,chinook_env.parameters[i])
+
+
+    def run(self):
+        if not self.ready():
+            return None
+        pitch_result=self.pitch_pid_controller.control(0,self.obj.attitude.pitch)
+        theta=pitch_result
+        print(theta)
+        self.env.left_force.fxyz.x=self.max_thrust*sin(theta)
+
+        self.env.left_force.fxyz.z=self.max_thrust*cos(theta)
+        self.env.right_force.fxyz.x=self.max_thrust*sin(theta)
+        self.env.right_force.fxyz.z=self.max_thrust*cos(theta)
+
+
 class ForceDisplay(vp.arrow):
-    def __init__(self, force):
+    def __init__(self, force,world_cs):
         super().__init__(pos=vector3_to_vector(force.origin),
-                         axis=vector3_to_vector(force.fxyz / 20))
-        self.offset = vp.vector(self.pos)
+                         axis=vector3_to_vector(force.fxyz/20))
+
         self.coordinate_system = force.coordinate_system
+        self.offset = vp.vector(self.pos)
         self.axis_init = vector_to_vector3(self.axis)
+        self.force=force
 
 
 class SimObjDisplay:
@@ -35,11 +61,10 @@ class SimObjDisplay:
         self.obj_box.axis=vp.vector(0,simenv.width / 10,0)
 
         self.obj_box_init_axis=vector_to_vector3(self.obj_box.axis)
-        self.obj_box.rotate(self.obj.attitude.yaw)
 
         self.env = simenv
         for i in self.obj.forces:
-            arrow = ForceDisplay(i)
+            arrow = ForceDisplay(i,self.env.world_coordinate_system)
             self.arrows.append(arrow)
             if i.coordinate_system == self.env.world_coordinate_system:
                 arrow.color = vp.color.red
@@ -61,7 +86,7 @@ class SimObjDisplay:
             i.pos= vector3_to_vector( self.env.world_coordinate_system.get_rotate_matrix(self.obj.attitude)@vector_to_vector3(i.offset))+self.obj_box.pos
             #i.pos = self.obj_box.pos + i.offset +posadd
             i.axis = get_new_axis(self.env.world_coordinate_system,i.coordinate_system,
-                                  i.axis_init)
+                                  i.force.fxyz/20)
             i.rotate(rotation)
 
 
@@ -71,10 +96,10 @@ class ChinookSimEnv(SimEnv):
         self.width = width  # 飞行器长度（宽度）
         self.height = height  # 飞行器升力距离重心的高度
         self.world_coordinate_system = CoordinateSystem([0, 0, 0])
-        self.chinook_uav = SimObject([0, 0, 0], [0, 0, 0], mass, J)
+        self.chinook_uav = SimObject([0, 0, 0], [0,math.pi/4, math.pi/4], mass, J)
 
         self.left_force = Force([0.5, 0, 0.5], [0, -width / 2, height], self.chinook_uav.attitude)
-        self.right_force = Force([-0.5, 0, 0.5], [0, width / 2, height], self.chinook_uav.attitude)
+        self.right_force = Force([0.5, 0, 0.5], [0, width / 2, height], self.chinook_uav.attitude)
 
         gravity = Gravity(self.world_coordinate_system)
 
@@ -85,10 +110,16 @@ class ChinookSimEnv(SimEnv):
         self.add_sim_object(self.chinook_uav)
 
         self.display = SimObjDisplay(self)
+        self.display.update(None)  # 直接更新一次位置
 
         self.sim_call_back = self.display.update
 
+        self.parameters={
+            "max_thrust":0.5,
+            "servors_limit":math.pi/4
+        }
 
+        self.add_controler(ChinookController(self))
 
 
 a = ChinookSimEnv(0.1, [0.125 / 1000, 0.125 / 1000, 0.125 / 1000], 0.2, 0.1)
