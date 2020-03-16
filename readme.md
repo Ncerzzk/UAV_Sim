@@ -3,6 +3,9 @@
 无人机力学仿真工具,主要用于仿真飞行器上的重力及各种力矩对飞行器控制的影响。
 
 - 完成刚体的力学建模。
+- TODO：
+	- Chinook 重构，参数设置统一
+	
 
 ### 代码示例
 ```python
@@ -30,6 +33,12 @@ plt.plot(attituide)
 plt.show()
 ```
 
+简单的PID控制效果： 
 ![此处输入图片的描述][1]
 
 [1]: https://raw.githubusercontent.com/Ncerzzk/UAV_SIM/master/pid_control.png
+
+俯仰控制的3D动画效果：
+![此处输入图片的描述][1]
+
+[1]: https://raw.githubusercontent.com/Ncerzzk/UAV_SIM/master/example.gif
