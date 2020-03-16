@@ -39,6 +39,6 @@ plt.show()
 [1]: https://raw.githubusercontent.com/Ncerzzk/UAV_SIM/master/pid_control.png
 
 俯仰控制的3D动画效果：
-![此处输入图片的描述][1]
+![此处输入图片的描述][2]
 
-[1]: https://raw.githubusercontent.com/Ncerzzk/UAV_SIM/master/example.gif
+[2]: https://raw.githubusercontent.com/Ncerzzk/UAV_SIM/master/example.gif
