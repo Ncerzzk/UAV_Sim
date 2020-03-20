@@ -235,6 +235,7 @@ class Gravity(Force):
     def added_call_back(self,sim_obj):
         self.fxyz.z=-self.G*sim_obj.mass
 
+
 class SimEnv:
     G_CONSTANT = 9.8
 

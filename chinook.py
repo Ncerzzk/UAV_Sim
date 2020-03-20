@@ -60,9 +60,9 @@ class SimObjDisplay:
     def __init__(self, simenv):
         self.arrows = []
         self.obj = simenv.chinook_uav
-        self.obj_box = vp.box(pos=vp.vector(0, 0, 0), length= simenv.width / 10,width=simenv.width / 10,
-                              height=simenv.width * 0.8)
-        self.obj_box.axis=vp.vector(0,simenv.width / 10,0)  # bug在这
+        self.obj_box = vp.box(pos=vp.vector(0, 0, 0), length= simenv.length / 10,width=simenv.length / 10,
+                              height=simenv.length * 0.8)
+        self.obj_box.axis=vp.vector(0,simenv.length / 10,0)  # bug在这
 
         self.obj_box_init_axis=vector_to_vector3(self.obj_box.axis)
 
@@ -95,15 +95,16 @@ class SimObjDisplay:
 
 
 class ChinookSimEnv(SimEnv):
-    def __init__(self, mass, J, width, height):
+    def __init__(self,parameter):
         super().__init__(1e-5)
-        self.width = width  # 飞行器长度（宽度）
-        self.height = height  # 飞行器升力距离重心的高度
+        self.parameter_init(parameter)
+        #self.width = width  # 飞行器长度（宽度）
+        #self.height = height  # 飞行器升力距离重心的高度
         self.world_coordinate_system = CoordinateSystem([0, 0, 0])
-        self.chinook_uav = SimObject([0, 0, 0], [0, math.pi/4,math.pi/4], mass, J)
+        self.chinook_uav = SimObject([0, 0, 0], self.init_attitude, self.mass, self.J)
 
-        self.left_force = Force([0., 0, 0.5], [0, -width / 2, height], self.chinook_uav.attitude)
-        self.right_force = Force([0., 0, 0.5], [0, width / 2, height], self.chinook_uav.attitude)
+        self.left_force = Force([0., 0, 0.5], [0, -self.length / 2, self.height], self.chinook_uav.attitude)
+        self.right_force = Force([0., 0, 0.5], [0, self.length / 2, self.height], self.chinook_uav.attitude)
 
         gravity = Gravity(self.world_coordinate_system)
 
@@ -127,8 +128,24 @@ class ChinookSimEnv(SimEnv):
 
         self.add_controler(ChinookController(self))
 
+    def parameter_init(self,parameters):
+        self.mass=parameters['mass']
+        self.J=parameters['J']
+        self.length=parameters['length']
+        #self.width=parameters['width']
+        self.height=parameters['height']
+        self.init_attitude=parameters['init_attitude']
 
-a = ChinookSimEnv(0.1, [0.125 / 1000, 0.125 / 1000, 0.125 / 1000], 0.2, 0.1)
+
+chinook_parameters={
+    'mass':0.1,
+    'J':[0.125/1000]*3,
+    'length':0.2,
+    'height':0.1,
+    'init_attitude':[0,math.pi/4,math.pi/4]
+}
+
+a = ChinookSimEnv(chinook_parameters)
 a.run(30000)
 plt.plot(a.display.result)
 plt.show()

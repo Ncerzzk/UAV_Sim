@@ -9,28 +9,16 @@
 
 ### 代码示例
 ```python
-env=Sim_Env(1e-5)   # add new sim environment,the argument is the step_sim_time
-sim_obj=SimObject([0,0,0],[math.pi/4,0,0],0.1,[0.125/1000,0.125/1000,0.125/1000],1e-5)   # add a sim objects, init the attitude and attributes like mass,J
+chinook_parameters={
+    'mass':0.1,
+    'J':[0.125/1000]*3,
+    'length':0.2,
+    'height':0.1,
+    'init_attitude':[0,math.pi/4,math.pi/4]
+}
 
-left=Force([0,0,10],[0,-0.1,0],sim_obj.attitude) #  Init two forces to control the roll,one is on the left side of the object, the other one is on the right side
-right = Force([0, 0, 10], [0, 0.1, 0], sim_obj.attitude) # and set the force coordinate system as the coordinate system of object
-
-sim_obj.add_force(left)
-sim_obj.add_force(right) # register the two forces to the object
-
-env.add_sim_object(sim_obj) # register the object to the environment
-
-pid_controler=PID_Control(1e-5,5e-3,1,5,0) # init a simple PID Controler
-
-atttitude=[]  # arrays to keep the result and plot latter
-for i in range(0,50000):
-    env.sim_step()
-    attituide.append(sim_obj.attitude.np_data[0])
-    #x.append(i)
-    roll_control(left,right,sim_obj,pid_controler)
-
-plt.plot(attituide)
-plt.show()
+a = ChinookSimEnv(chinook_parameters)
+a.run(30000)
 ```
 
 简单的PID控制效果： 
@@ -42,3 +30,13 @@ plt.show()
 ![此处输入图片的描述][2]
 
 [2]: https://raw.githubusercontent.com/Ncerzzk/UAV_SIM/master/example.gif
+
+### 仿真环境执行流程
+- 仿真环境执行sim_step
+	- 遍历调用所有控制器的run函数
+	- 遍历调用所有仿真对象的sim_step函数
+		- 计算合力，计算合力矩
+			- 调用每个力的sim_step函数（默认函数为空，有些力可能需要不断变化，如空气阻力等，此时可以在该力的类中重写此函数）
+		- 更新位置、速度、加速度 角度、角速度、角加速度
+- 仿真环境定时器运行（用于在某个时刻触发扰动等）
+- 调用仿真环境的callback,用户可自己指定回调函数
