@@ -1,6 +1,7 @@
 import numpy as np
 from math import cos, sin
 
+
 class Vector3(np.ndarray):
 
     def __new__(cls, *args, **kwargs):
@@ -142,6 +143,7 @@ class SimObject:
         self.sim_step_time = None  # the sim_step_time would be set when added to the sim_env
 
         self.centroid_position = self.origin.copy()
+        self.components=[]
 
     def add_force(self, force):
         self.forces.append(force)
@@ -171,6 +173,36 @@ class SimObject:
         # 因为会先调用np.array的左乘函数，将np,array分成单个元素，然后再调用 单个元素* Vector3
         # 而单个元素乘以Vector3会调用Vector3的右乘函数，返回一个Vector3，所以最后np.array * Vector3，会返回 n个 Vector3，与要求不符
 
+    def add_components(self,component,origin):
+        self.components.append(component)
+        component.added_call_back(origin,self)
+        self.mass+=component.mass
+        self.J+=self.mass*(origin**2)
+
+        # 直接将组件的力和力矩都加入母体的列表中
+        # 组件仍旧可以根据引用访问到这些力和力矩
+        for i in component.forces:
+            self.forces.append(i)
+        for i in component.torques:
+            self.torques.append(i)
+
+
+class Component(SimObject):
+    def __init__(self,mass):
+        super(Component, self).__init__([0,0,0],[0,0,0],mass,[0,0,0])
+        self.parent_obj=None
+
+    def added_call_back(self,origin,simobj):
+        self.origin=origin
+        self.parent_obj=simobj
+        for i in self.forces:
+            i.origin+=origin-self.parent_obj.origin
+            i.coordinate_system=self.parent_obj.attitude
+
+    def  sim_step(self):
+        # 本函数应该用来更新组件的力，和力矩
+        pass
+    
 
 class Force:
     def __init__(self, vector_value, origin, coordinate_system):
